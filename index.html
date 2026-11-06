@@ -121,11 +121,11 @@ const HITS_PER_LIFE=5;
 const targets=[50,100,200,300,400];
 
 const stages=[
- {name:"MUDAH",speed:85,fire:0.65,interval:850},
- {name:"SEDANG",speed:105,fire:0.9,interval:720},
- {name:"MENCABAR",speed:125,fire:1.15,interval:620},
- {name:"SUSAH",speed:145,fire:1.4,interval:520},
- {name:"BOSS TERAKHIR",speed:165,fire:1.7,interval:430}
+ {name:"MUDAH",speed:85,fire:0.65,interval:850,shotDelay:2.8,bulletSize:4.5,maxShots:5},
+ {name:"SEDANG",speed:105,fire:0.9,interval:720,shotDelay:2.4,bulletSize:4.8,maxShots:7},
+ {name:"MENCABAR",speed:125,fire:1.15,interval:620,shotDelay:2.1,bulletSize:5.2,maxShots:9},
+ {name:"SUSAH",speed:145,fire:1.4,interval:520,shotDelay:1.8,bulletSize:5.6,maxShots:11},
+ {name:"BOSS TERAKHIR",speed:165,fire:1.7,interval:430,shotDelay:1.6,bulletSize:6,maxShots:13}
 ];
 
 let player={x:100,y:220};
@@ -150,10 +150,7 @@ const bulletNames=[
  "PELURU PECAH 8"
 ];
 
-/* ==========================================
-   BANK SOALAN IBADAH PUASA
-   Semua soalan hanya berkaitan ibadah puasa.
-========================================== */
+/* BANK SOALAN IBADAH PUASA */
 
 const questions=[
 {q:"Apakah maksud puasa dari segi istilah syarak?",a:["Menahan diri daripada perkara yang membatalkan puasa bermula terbit fajar hingga terbenam matahari dengan niat","Tidak makan sepanjang malam","Tidur sepanjang hari","Tidak bercakap dengan sesiapa"],c:0},
@@ -203,7 +200,7 @@ const questions=[
 {q:"Apakah hukum menelan air liur sendiri yang bersih ketika berpuasa?",a:["Tidak membatalkan puasa","Membatalkan puasa","Wajib qada","Wajib fidyah"],c:0},
 {q:"Apakah hukum menggunakan ubat titis mata ketika berpuasa menurut pandangan yang membenarkannya?",a:["Tidak membatalkan puasa menurut pandangan tersebut","Sentiasa membatalkan puasa","Wajib qada dalam semua keadaan","Haram digunakan"],c:0},
 {q:"Apakah tindakan yang betul jika seseorang mengetahui bahawa waktu Subuh telah masuk tetapi masih makan dengan sengaja?",a:["Berhenti makan dan dia perlu mengqadakan puasa hari itu","Terus makan sehingga kenyang","Puasa tetap sah","Tidak perlu melakukan apa-apa"],c:0},
-{q:"Apakah yang dimaksudkan dengan kaffarah puasa?",a:["Denda ibadah tertentu bagi kesalahan tertentu yang ditetapkan syarak","Zakat fitrah","Sedekah biasa","Hadiah kepada guru"],c:0},
+{q:"Apakah yang dimaksudkan dengan kaffarah puasa?",a:["Denda ibadah tertentu bagi kesalahan tertentu yang ditetapkan syarak","Zakat fitrah","Sedekah biasa","Hadiah kepada rakan"],c:0},
 {q:"Apakah hukum berniat puasa nazar yang telah diwajibkan ke atas diri sendiri?",a:["Wajib menunaikannya","Sunat sahaja","Haram","Tidak perlu dilakukan"],c:0},
 {q:"Apakah tujuan solat Tarawih pada bulan Ramadan?",a:["Ibadah solat sunat malam Ramadan","Menggantikan solat Subuh","Menggantikan puasa","Membatalkan puasa"],c:0},
 {q:"Apakah malam yang sangat istimewa dalam bulan Ramadan dan disebut lebih baik daripada seribu bulan?",a:["Lailatulqadar","Malam Nisfu Syaaban","Malam Aidilfitri","Malam Jumaat sahaja"],c:0},
@@ -317,7 +314,7 @@ function transform(){
  message(flying?"✈️ MOD KAPAL TERBANG!":"🚗 MOD KERETA!");
 }
 
-/* TEMBAKAN */
+/* TEMBAKAN PEMAIN */
 
 function shoot(){
  if(!active||paused||Date.now()-lastShot<190)return;
@@ -476,7 +473,7 @@ function spawnEnemy(){
   hp:info.hp*strength,maxHp:info.hp*strength,
   type,dead:false,phase:Math.random()*6,
   speedFactor:.8+Math.random()*.5,
-  shotTimer:Math.random()*1.5
+  shotTimer:1.2+Math.random()*1.5
  });
 }
 
@@ -499,24 +496,29 @@ function killEnemy(e){
  updateHUD();
 }
 
-/* SERANGAN MUSUH */
+/* SERANGAN MUSUH - DIKURANGKAN MENGIKUT STAGE */
 
 function enemyFire(e){
+ const diff=stages[level-1];
+
+ if(enemyShots.length>=diff.maxShots)return;
+
  const sx=e.x+20,sy=e.y+30;
  const dx=(player.x+40)-sx;
  const dy=(player.y+30)-sy;
  const len=Math.hypot(dx,dy)||1;
- const speed=level===5?330:245+level*20;
+ const speed=190+level*17;
 
  enemyShots.push({
   x:sx,y:sy,
   vx:dx/len*speed,
   vy:dy/len*speed,
   damage:enemyTypes[e.type].damage,
-  type:e.type
+  type:e.type,
+  size:diff.bulletSize
  });
 
- tone(230,.06,"square",.018,120);
+ tone(230,.06,"square",.012,120);
 }
 
 /* SISTEM SERANGAN DAN KUIZ */
@@ -531,10 +533,23 @@ function damage(){
 
  tone(150,.15,"sawtooth",.08,70);
 
- if(hitCount<HITS_PER_LIFE){
-  message("⚠️ TERKENA TEMBAKAN "+hitCount+"/5! JAWAB SOALAN PUASA!");
+ if(hitCount<3){
+  message("⚠️ TERKENA TEMBAKAN "+hitCount+"/5");
+  return;
+ }
+
+ if(hitCount===3){
+  message("📖 MASA UJIAN ILMU PUASA!");
   startDeathQuiz("single");
- }else{
+  return;
+ }
+
+ if(hitCount===4){
+  message("⚠️ HATI-HATI! 4/5 TEMBAKAN!");
+  return;
+ }
+
+ if(hitCount>=5){
   hitCount=0;
   hp=Math.max(0,hp-1);
   updateHUD();
@@ -545,7 +560,7 @@ function damage(){
    return;
   }
 
-  message("💔 NYAWA BERKURANG! JAWAB 4 SOALAN UNTUK SAMBUNG!");
+  message("💔 NYAWA BERKURANG! JAWAB 4 SOALAN!");
   startDeathQuiz("life");
  }
 }
@@ -561,7 +576,6 @@ function getQuestion(){
    original:index
   }));
 
-  // Susun pilihan jawapan supaya jawapan betul tidak sentiasa A
   questionDeck.forEach(q=>{
    const correct=q.a[q.c];
    for(let i=q.a.length-1;i>0;i--){
@@ -703,10 +717,14 @@ function answerDeathQuiz(index){
 
 function resumeAfterQuiz(){
  if(!active)return;
+
  document.getElementById("quizScreen").style.display="none";
- hitCount=0;
+
+ // Kekalkan kiraan terkena tembakan selepas kuiz pertama.
+ // Kiraan hanya kembali kosong apabila nyawa ditolak.
  shieldUntil=Date.now()+2500;
  paused=false;
+
  updateHUD();
  message("🌟 SYABAS! TERUSKAN MISI PUASA!");
  soundSuccess();
@@ -897,7 +915,6 @@ function drawEnemy(e){
  ctx.strokeStyle="#271c38";ctx.lineWidth=4;
 
  if(e.type===0){
-  // NAGA
   ctx.beginPath();
   ctx.ellipse(x+38,y+36,38,25,0,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();
@@ -909,7 +926,6 @@ function drawEnemy(e){
   ctx.fillStyle="#f8c12b";
   ctx.beginPath();ctx.moveTo(x+5,y+25);ctx.lineTo(x-12,y-3);ctx.lineTo(x+30,y+17);ctx.fill();
  }else if(e.type===1){
-  // HARIMAU
   ctx.beginPath();ctx.ellipse(x+40,y+37,35,23,0,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.arc(x+70,y+23,21,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.arc(x+58,y+6,9,0,Math.PI*2);ctx.arc(x+80,y+6,9,0,Math.PI*2);ctx.fill();
@@ -917,14 +933,12 @@ function drawEnemy(e){
   for(let i=0;i<4;i++)ctx.fillRect(x+17+i*15,y+18,5,32);
   ctx.fillStyle="white";ctx.fillRect(x+76,y+18,5,5);
  }else if(e.type===2){
-  // SERIGALA
   ctx.beginPath();ctx.ellipse(x+38,y+37,34,22,0,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.arc(x+70,y+25,20,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(x+57,y+11);ctx.lineTo(x+57,y-12);ctx.lineTo(x+69,y+10);ctx.fill();
   ctx.moveTo(x+77,y+10);ctx.lineTo(x+90,y-10);ctx.lineTo(x+88,y+19);ctx.fill();
   ctx.fillStyle="#fff";ctx.fillRect(x+76,y+20,5,5);
  }else if(e.type===3){
-  // KELAWAR
   ctx.beginPath();
   ctx.moveTo(x+38,y+30);ctx.lineTo(x-8,y-3);ctx.lineTo(x+4,y+42);
   ctx.lineTo(x+23,y+28);ctx.lineTo(x+40,y+55);
@@ -933,7 +947,6 @@ function drawEnemy(e){
   ctx.closePath();ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.arc(x+44,y+28,16,0,Math.PI*2);ctx.fill();
  }else if(e.type===4){
-  // ULAR
   ctx.lineWidth=17;ctx.strokeStyle=color;
   ctx.beginPath();ctx.moveTo(x,y+45);
   ctx.quadraticCurveTo(x+22,y-5,x+48,y+42);
@@ -942,17 +955,14 @@ function drawEnemy(e){
   ctx.fillStyle=color;ctx.beginPath();ctx.arc(x+82,y+22,16,0,Math.PI*2);ctx.fill();
   ctx.fillStyle="white";ctx.fillRect(x+88,y+17,4,5);
  }else if(e.type===5){
-  // BADAK
   ctx.beginPath();ctx.ellipse(x+42,y+37,40,28,0,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.arc(x+73,y+24,20,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(x+82,y+15);ctx.lineTo(x+112,y+8);ctx.lineTo(x+87,y+29);ctx.fill();
  }else if(e.type===6){
-  // BUAYA
   ctx.beginPath();ctx.ellipse(x+38,y+37,42,19,0,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(x+57,y+22);ctx.lineTo(x+98,y+18);ctx.lineTo(x+88,y+40);ctx.lineTo(x+58,y+40);ctx.fill();ctx.stroke();
   ctx.fillStyle="#fff";for(let i=0;i<4;i++)ctx.fillRect(x+68+i*7,y+35,4,8);
  }else{
-  // RAPTOR
   ctx.beginPath();ctx.ellipse(x+37,y+34,31,22,0,0,Math.PI*2);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(x+55,y+26);ctx.lineTo(x+88,y+17);ctx.lineTo(x+73,y+42);ctx.fill();ctx.stroke();
   ctx.beginPath();ctx.moveTo(x+20,y+45);ctx.lineTo(x+7,y+70);ctx.lineTo(x+30,y+53);ctx.fill();
@@ -1011,7 +1021,7 @@ function draw(){
   ctx.shadowColor=b.type===3?"cyan":b.type===1?"orange":"yellow";
   ctx.fillStyle=b.type===3?"#00ffff":b.type===1?"#ff5a00":"#fff400";
   ctx.beginPath();
-  ctx.ellipse(b.x,b.y, b.type===3?13:9,4,0,0,Math.PI*2);
+  ctx.ellipse(b.x,b.y,b.type===3?13:9,4,0,0,Math.PI*2);
   ctx.fill();
   ctx.restore();
  });
@@ -1022,10 +1032,16 @@ function draw(){
   ctx.fillText(["🔥","💥","⚡","❤️","💣","🔫","🌈"][t.type],t.x,t.y);
  });
 
+ /* PELURU MUSUH LEBIH KECIL */
  enemyShots.forEach(b=>{
   ctx.save();
-  ctx.fillStyle="#ff321c";ctx.shadowBlur=12;ctx.shadowColor="red";
-  ctx.beginPath();ctx.arc(b.x,b.y,9,0,Math.PI*2);ctx.fill();
+  const size=b.size||5;
+  ctx.fillStyle="#ff321c";
+  ctx.shadowBlur=6;
+  ctx.shadowColor="#ff5544";
+  ctx.beginPath();
+  ctx.arc(b.x,b.y,size,0,Math.PI*2);
+  ctx.fill();
   ctx.restore();
  });
 
@@ -1071,7 +1087,7 @@ function update(dt){
   e.shotTimer-=dt;
   if(e.shotTimer<=0){
    enemyFire(e);
-   e.shotTimer=Math.max(.55,1.8/level)+(Math.random()*.6);
+   e.shotTimer=diff.shotDelay+(Math.random()*.8);
   }
  });
 
@@ -1096,19 +1112,27 @@ function update(dt){
  if(boss){
   boss.y=150+Math.sin(gameTime*2)*35;
   boss.shotTimer-=dt;
+
   if(boss.shotTimer<=0){
    const dx=player.x+40-boss.x;
    const dy=player.y+30-boss.y;
    const len=Math.hypot(dx,dy)||1;
-   for(let i=-1;i<=1;i++){
-    enemyShots.push({
-     x:boss.x+20,y:boss.y+60,
-     vx:dx/len*310+i*45,
-     vy:dy/len*310,
-     damage:1,type:0
-    });
+
+   // Boss menembak dua peluru kecil sahaja
+   const bossSize=stages[level-1].bulletSize;
+
+   if(enemyShots.length<stages[level-1].maxShots){
+    for(let i=0;i<2;i++){
+     enemyShots.push({
+      x:boss.x+20,y:boss.y+60,
+      vx:dx/len*250+(i===0?-25:25),
+      vy:dy/len*250,
+      damage:1,type:0,
+      size:bossSize
+     });
+    }
    }
-   boss.shotTimer=.8;
+   boss.shotTimer=1.35;
   }
 
   bullets.forEach(b=>{
