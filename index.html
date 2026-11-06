@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="ms">
 <head>
@@ -100,7 +99,7 @@ canvas{width:100%;height:100%;display:block}
  <div class="panel">
   <h1 id="endTitle">🏆 TAMAT!</h1>
   <p id="endText"></p>
-  <button onclick="location.reload()">🔄 MAIN SEMULA</button>
+  <button onclick="restartGame()">🔄 MAIN SEMULA</button>
  </div>
 </div>
 
@@ -117,7 +116,8 @@ const W=900,H=500;
 
 const MAX_HP=5;
 const PLAYER_SPEED=430;
-const HITS_PER_LIFE=5;
+const HITS_PER_QUIZ=3;
+const HITS_BEFORE_LOSE_LIFE=12;
 const targets=[50,100,200,300,400];
 
 const stages=[
@@ -132,6 +132,7 @@ let player={x:100,y:220};
 let bullets=[],enemies=[],enemyShots=[],items=[],particles=[];
 let score=0,gems=0,hp=MAX_HP,kills=0,totalKills=0;
 let level=1,bombCount=3;
+let checkpointStage=1;
 let active=false,paused=false,flying=false;
 let boss=null,bossSpawned=false;
 let bulletType=0,shootHeld=false,lastShot=0;
@@ -287,7 +288,11 @@ async function startGame(){
  player={x:100,y:220};
  bullets=[];enemies=[];enemyShots=[];items=[];particles=[];
  score=0;gems=0;hp=MAX_HP;kills=0;totalKills=0;
- level=1;bombCount=3;bulletType=0;
+
+ // Mula pada checkpoint terakhir, bukan semestinya Stage 1.
+ level=checkpointStage;
+ bombCount=3;bulletType=0;
+
  boss=null;bossSpawned=false;flying=false;
  active=true;paused=false;shootHeld=false;
  joy={x:0,y:0};keys={};
@@ -302,6 +307,14 @@ async function startGame(){
  updateHUD();
  message("🌟 MISI ILMU PUASA BERMULA!");
  say("Selamat datang. Bersiaplah menguasai ilmu ibadah puasa!");
+}
+
+/* MAIN SEMULA DARI CHECKPOINT */
+
+function restartGame(){
+ document.getElementById("endScreen").style.display="none";
+ document.getElementById("quizScreen").style.display="none";
+ startGame();
 }
 
 /* TRANSFORM */
@@ -496,7 +509,7 @@ function killEnemy(e){
  updateHUD();
 }
 
-/* SERANGAN MUSUH - DIKURANGKAN MENGIKUT STAGE */
+/* SERANGAN MUSUH */
 
 function enemyFire(e){
  const diff=stages[level-1];
@@ -533,23 +546,8 @@ function damage(){
 
  tone(150,.15,"sawtooth",.08,70);
 
- if(hitCount<3){
-  message("⚠️ TERKENA TEMBAKAN "+hitCount+"/5");
-  return;
- }
-
- if(hitCount===3){
-  message("📖 MASA UJIAN ILMU PUASA!");
-  startDeathQuiz("single");
-  return;
- }
-
- if(hitCount===4){
-  message("⚠️ HATI-HATI! 4/5 TEMBAKAN!");
-  return;
- }
-
- if(hitCount>=5){
+ // Tembakan ke-12: hilang satu nyawa dan kuiz 3 soalan.
+ if(hitCount>=HITS_BEFORE_LOSE_LIFE){
   hitCount=0;
   hp=Math.max(0,hp-1);
   updateHUD();
@@ -560,9 +558,19 @@ function damage(){
    return;
   }
 
-  message("💔 NYAWA BERKURANG! JAWAB 4 SOALAN!");
+  message("💔 NYAWA BERKURANG! JAWAB 3 SOALAN!");
   startDeathQuiz("life");
+  return;
  }
+
+ // Tembakan ke-3, 6 dan 9: kuiz satu soalan.
+ if(hitCount%HITS_PER_QUIZ===0){
+  message("📖 MASA UJIAN ILMU PUASA!");
+  startDeathQuiz("single");
+  return;
+ }
+
+ message("⚠️ TERKENA TEMBAKAN "+hitCount+"/12");
 }
 
 /* SOALAN RAWAK */
@@ -607,7 +615,7 @@ function startDeathQuiz(mode){
  quizCorrect=0;
  quizQuestions=[];
 
- const count=mode==="life"?4:1;
+ const count=mode==="life"?3:1;
  for(let i=0;i<count;i++)quizQuestions.push(getQuestion());
 
  const screen=document.getElementById("quizScreen");
@@ -617,7 +625,7 @@ function startDeathQuiz(mode){
 
  document.getElementById("quizInfo").textContent=
  mode==="life"
- ?"NYAWA TELAH HILANG! Jawab 4 soalan berturut-turut dengan betul untuk meneruskan permainan. Satu jawapan salah bermakna permainan bermula semula."
+ ?"NYAWA TELAH BERKURANG! Jawab 3 soalan berturut-turut dengan betul untuk meneruskan permainan. Satu jawapan salah bermakna GAME OVER."
  :"Anda terkena serangan! Jawab satu soalan tentang ibadah puasa untuk meneruskan permainan.";
 
  document.getElementById("quizFeedback").textContent="";
@@ -632,7 +640,7 @@ function showDeathQuestion(){
 
  document.getElementById("quizCounter").textContent=
  quizMode==="life"
- ?"SOALAN "+(quizIndex+1)+" DARIPADA 4"
+ ?"SOALAN "+(quizIndex+1)+" DARIPADA 3"
  :"1 SOALAN SAHAJA";
 
  document.getElementById("quizProgressFill").style.width=
@@ -720,8 +728,8 @@ function resumeAfterQuiz(){
 
  document.getElementById("quizScreen").style.display="none";
 
- // Kekalkan kiraan terkena tembakan selepas kuiz pertama.
- // Kiraan hanya kembali kosong apabila nyawa ditolak.
+ // Kiraan hit dikekalkan selepas kuiz satu soalan.
+ // Kiraan hanya menjadi 0 selepas hit ke-12.
  shieldUntil=Date.now()+2500;
  paused=false;
 
@@ -745,7 +753,8 @@ function gameOver(){
  "Skor akhir: "+score+
  ". Musuh ditewaskan: "+totalKills+
  ". Permata: "+gems+
- ". Cuba lagi untuk menguasai ilmu ibadah puasa!";
+ ". Stage terakhir: "+checkpointStage+
+ ". Tekan MAIN SEMULA untuk menyambung dari stage terakhir!";
 
  soundExplosion();
  say("Game over! Jangan berputus asa. Cuba lagi!");
@@ -757,7 +766,12 @@ function advanceStage(){
  if(!active||paused||bossSpawned)return;
 
  if(level<5){
-  level++;kills=0;
+  level++;
+
+  // Simpan stage tertinggi yang pernah dicapai.
+  checkpointStage=Math.max(checkpointStage,level);
+
+  kills=0;
   enemies=[];enemyShots=[];bullets=[];items=[];
   boss=null;bossSpawned=false;
   bulletType=0;paused=true;
@@ -1032,7 +1046,6 @@ function draw(){
   ctx.fillText(["🔥","💥","⚡","❤️","💣","🔫","🌈"][t.type],t.x,t.y);
  });
 
- /* PELURU MUSUH LEBIH KECIL */
  enemyShots.forEach(b=>{
   ctx.save();
   const size=b.size||5;
@@ -1058,7 +1071,7 @@ function draw(){
  ctx.textAlign="left";
  ctx.fillText("PELURU: "+bulletNames[bulletType],15,25);
  ctx.fillText("MUSUH: "+kills+"/"+targets[level-1],15,48);
- ctx.fillText("TEMBAKAN: "+hitCount+"/5",15,70);
+ ctx.fillText("TEMBAKAN: "+hitCount+"/12",15,70);
  ctx.fillText(flying?"MOD KAPAL TERBANG":"MOD KERETA",15,92);
 }
 
@@ -1118,7 +1131,6 @@ function update(dt){
    const dy=player.y+30-boss.y;
    const len=Math.hypot(dx,dy)||1;
 
-   // Boss menembak dua peluru kecil sahaja
    const bossSize=stages[level-1].bulletSize;
 
    if(enemyShots.length<stages[level-1].maxShots){
