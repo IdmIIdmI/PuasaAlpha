@@ -1,0 +1,1217 @@
+
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Rainbow Transformer Hero - Misi Puasa</title>
+
+<style>
+*{box-sizing:border-box;touch-action:manipulation}
+body{margin:0;background:#10152d;color:white;font-family:Arial,sans-serif;overflow:hidden}
+#gameScreen{width:100vw;height:100dvh;display:flex;flex-direction:column}
+#topbar{height:42px;flex-shrink:0;display:flex;align-items:center;justify-content:space-around;gap:3px;background:linear-gradient(90deg,#ff299a,#7138ed,#05b8dc);font-size:clamp(10px,2vw,16px);font-weight:bold}
+#stage{flex:1;min-height:0;position:relative;overflow:hidden}
+canvas{width:100%;height:100%;display:block}
+#mobileControls{position:absolute;inset:0;pointer-events:none}
+#joystick{position:absolute;left:2%;bottom:5%;width:clamp(85px,17vw,140px);aspect-ratio:1;border-radius:50%;background:#ffffff28;border:2px solid #ffffff99;pointer-events:auto;touch-action:none}
+#stick{position:absolute;width:40%;height:40%;left:30%;top:30%;border-radius:50%;background:#ffffffb0;border:2px solid white}
+.action{position:absolute;pointer-events:auto;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;color:white;font-weight:bold;border:2px solid white;user-select:none;box-shadow:0 0 15px #ffffff55;touch-action:none}
+.action span{font-size:clamp(23px,5vw,38px)}
+.action small{font-size:clamp(8px,1.5vw,12px)}
+#fire{width:clamp(67px,13vw,105px);aspect-ratio:1;right:3%;bottom:7%;background:#ff267cbd}
+#bomb{width:clamp(53px,10vw,80px);aspect-ratio:1;right:19%;bottom:5%;background:#ff9c20bd}
+#transformBtn{width:clamp(52px,10vw,75px);aspect-ratio:1;right:3%;top:5%;background:#9146e5bd}
+#message{position:absolute;top:4%;left:50%;transform:translateX(-50%);font-weight:bold;font-size:clamp(10px,2vw,17px);text-align:center;width:80%;pointer-events:none;text-shadow:2px 2px #552070}
+.overlay{position:fixed;z-index:30;inset:0;display:none;align-items:center;justify-content:center;padding:12px;background:#090b20ed;text-align:center}
+.panel{width:min(490px,94vw);max-height:90dvh;overflow:auto;padding:17px;border:3px solid #fff36a;border-radius:20px;background:linear-gradient(145deg,#ff45a4,#6939e7,#12a7e0);box-shadow:0 0 30px #ffffff55}
+.panel h1{font-size:clamp(20px,4vw,28px);color:#fff34c;text-shadow:2px 3px #9e247d}
+.panel button{width:100%;padding:12px;margin-top:8px;border:2px solid white;border-radius:12px;background:#fff23b;color:#512080;font-size:16px;font-weight:bold}
+#quizScreen{z-index:120!important;overflow-y:auto;touch-action:pan-y}
+#quizScreen .panel{width:min(680px,96vw)!important;max-height:92dvh!important;padding:clamp(16px,4vw,30px)!important}
+#quizQuestion{font-size:clamp(19px,3.5vw,26px)!important;font-weight:bold;line-height:1.5;margin:22px 0;padding:10px}
+#quizInfo{font-size:clamp(14px,2.5vw,18px)}
+#quizFeedback{font-size:clamp(15px,2.5vw,19px);font-weight:bold;margin:15px 0;min-height:35px}
+#quizProgress{height:9px;background:#ffffff55;border-radius:10px;overflow:hidden;margin:12px 0}
+#quizProgressFill{height:100%;width:0;background:#fff36a;transition:width .3s}
+#quizCounter{font-weight:bold;color:#fff36a}
+#answers{display:flex;flex-direction:column;gap:10px;width:100%}
+#quizScreen button{display:block;width:100%;min-height:58px;padding:14px;margin:5px 0;font-size:clamp(16px,2.8vw,20px);font-weight:bold;line-height:1.5;color:#512080;background:white;border:3px solid #fff36a;border-radius:14px;touch-action:manipulation;user-select:none}
+#quizScreen button:active{background:#fff36a;transform:scale(.98)}
+#quizScreen button:disabled{opacity:.7}
+#startScreen{position:fixed;z-index:20;inset:0;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:20px;overflow:auto;background:linear-gradient(135deg,#ff45a4,#6939e7,#12a7e0);border:4px solid #fff36a;text-align:center}
+#startScreen h1{color:#fff34c;font-size:clamp(25px,5vw,45px);text-shadow:3px 4px #9e247d}
+#startScreen button{padding:15px 35px;border:3px solid white;border-radius:16px;background:#fff23b;font-size:15px;font-weight:bold;color:#512080}
+#rotateMessage{display:none;position:fixed;inset:0;z-index:100;background:#17102f;align-items:center;justify-content:center;text-align:center;padding:25px;font-size:23px;pointer-events:none}
+@media(orientation:portrait){#rotateMessage{display:flex}}
+</style>
+</head>
+
+<body>
+
+<div id="gameScreen">
+ <div id="topbar">
+  <span id="hp">❤️ 5</span>
+  <span id="score">⭐ 0</span>
+  <span id="gems">💎 0</span>
+  <span id="bombs">💣 3</span>
+  <span id="level">🏆 STAGE 1</span>
+  <span id="progress">0/50</span>
+ </div>
+
+ <div id="stage">
+  <canvas id="game" width="900" height="500"></canvas>
+  <div id="message">BERSIAPLAH, PAHLAWAN!</div>
+  <div id="mobileControls">
+   <div id="joystick"><div id="stick"></div></div>
+   <div class="action" id="fire"><span>🔫</span><small>TEMBAK</small></div>
+   <div class="action" id="bomb"><span>💣</span><small>BOM</small></div>
+   <div class="action" id="transformBtn"><span>🚗</span><small>TRANSFORM</small></div>
+  </div>
+ </div>
+</div>
+
+<div id="startScreen">
+ <h1>🌈 RAINBOW TRANSFORMER HERO 🌈</h1>
+ <h2>🚗 TRANSFORM • 🔫 SHOOT • 💣 BOOM</h2>
+ <h2>📖 MISI PAKAR IBADAH PUASA</h2>
+ <p>5 STAGE • 5 NYAWA • PELBAGAI MUSUH</p>
+ <p>🐉 NAGA • 🐺 SERIGALA • 🦇 KELAWAR • 🐯 HARIMAU</p>
+ <p>Peluru pecah 2, 3 dan 8!</p>
+ <p>Setiap serangan musuh menguji ilmu puasa anda.</p>
+ <button id="startButton">▶ MULA BERMAIN</button>
+ <p>Gunakan telefon secara landscape.</p>
+</div>
+
+<div class="overlay" id="quizScreen">
+ <div class="panel">
+  <h1>📖 UJIAN PAHLAWAN PUASA</h1>
+  <h3 id="quizStage">STAGE 1</h3>
+  <p id="quizInfo"></p>
+  <div id="quizProgress"><div id="quizProgressFill"></div></div>
+  <div id="quizCounter"></div>
+  <div id="quizQuestion"></div>
+  <div id="answers"></div>
+  <p id="quizFeedback"></p>
+ </div>
+</div>
+
+<div class="overlay" id="endScreen">
+ <div class="panel">
+  <h1 id="endTitle">🏆 TAMAT!</h1>
+  <p id="endText"></p>
+  <button onclick="location.reload()">🔄 MAIN SEMULA</button>
+ </div>
+</div>
+
+<div id="rotateMessage">
+ <div>📱<br><br>SILA PUSING TELEFON KE LANDSCAPE<br><br><small>Untuk pengalaman permainan terbaik.</small></div>
+</div>
+
+<script>
+"use strict";
+
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+const W=900,H=500;
+
+const MAX_HP=5;
+const PLAYER_SPEED=430;
+const HITS_PER_LIFE=5;
+const targets=[50,100,200,300,400];
+
+const stages=[
+ {name:"MUDAH",speed:85,fire:0.65,interval:850},
+ {name:"SEDANG",speed:105,fire:0.9,interval:720},
+ {name:"MENCABAR",speed:125,fire:1.15,interval:620},
+ {name:"SUSAH",speed:145,fire:1.4,interval:520},
+ {name:"BOSS TERAKHIR",speed:165,fire:1.7,interval:430}
+];
+
+let player={x:100,y:220};
+let bullets=[],enemies=[],enemyShots=[],items=[],particles=[];
+let score=0,gems=0,hp=MAX_HP,kills=0,totalKills=0;
+let level=1,bombCount=3;
+let active=false,paused=false,flying=false;
+let boss=null,bossSpawned=false;
+let bulletType=0,shootHeld=false,lastShot=0;
+let lastSpawn=0,lastItem=0,gameTime=0,lastTime=0;
+let joy={x:0,y:0},keys={};
+let shieldUntil=0,hitCount=0,lastHit=0;
+let audioCtx=null;
+let quizQuestions=[],quizIndex=0,quizLocked=false;
+let quizMode="single",questionDeck=[],questionPosition=0;
+let quizCorrect=0;
+
+const bulletNames=[
+ "PELURU BIASA",
+ "PELURU PECAH 2",
+ "PELURU PECAH 3",
+ "PELURU PECAH 8"
+];
+
+/* ==========================================
+   BANK SOALAN IBADAH PUASA
+   Semua soalan hanya berkaitan ibadah puasa.
+========================================== */
+
+const questions=[
+{q:"Apakah maksud puasa dari segi istilah syarak?",a:["Menahan diri daripada perkara yang membatalkan puasa bermula terbit fajar hingga terbenam matahari dengan niat","Tidak makan sepanjang malam","Tidur sepanjang hari","Tidak bercakap dengan sesiapa"],c:0},
+{q:"Apakah hukum berpuasa pada bulan Ramadan?",a:["Sunat","Wajib","Makruh","Harus"],c:1},
+{q:"Puasa Ramadan diwajibkan kepada umat Islam pada bulan yang ke berapa dalam kalendar Hijrah?",a:["Ramadan","Syawal","Rejab","Muharam"],c:0},
+{q:"Apakah salah satu syarat wajib puasa?",a:["Islam","Mempunyai rumah","Memakai pakaian putih","Mempunyai pekerjaan"],c:0},
+{q:"Bilakah waktu bermula puasa?",a:["Selepas matahari terbit","Ketika masuk waktu Subuh sebenar","Waktu Zohor","Selepas Asar"],c:1},
+{q:"Bilakah waktu berbuka puasa?",a:["Apabila matahari terbenam","Apabila masuk Zohor","Apabila masuk Asar","Apabila masuk tengah malam"],c:0},
+{q:"Apakah rukun puasa?",a:["Niat dan menahan diri daripada perkara yang membatalkan puasa","Sahur dan tidur","Berbuka dan bersolat","Membaca doa sahaja"],c:0},
+{q:"Bilakah niat puasa fardu Ramadan perlu dilakukan menurut mazhab Syafie?",a:["Pada malam hari sebelum terbit fajar bagi setiap hari","Selepas Zohor","Selepas Asar","Selepas berbuka"],c:0},
+{q:"Apakah hukum makan dengan sengaja pada siang hari Ramadan tanpa keuzuran?",a:["Membatalkan puasa dan berdosa","Menambahkan pahala","Tidak memberi kesan","Menjadikan puasa sunat"],c:0},
+{q:"Ali terlupa bahawa dia sedang berpuasa lalu makan. Apakah hukumnya?",a:["Puasa batal","Puasa masih sah jika dia berhenti apabila teringat","Wajib membayar fidyah sahaja","Wajib mengulang puasa serta-merta"],c:1},
+{q:"Apakah yang perlu dilakukan apabila seseorang yang berpuasa terlupa lalu minum?",a:["Berhenti minum apabila teringat dan meneruskan puasa","Terus minum sehingga kenyang","Membatalkan puasa","Tidak perlu berpuasa esok"],c:0},
+{q:"Apakah hukum bersahur?",a:["Sunat","Wajib","Haram","Membatalkan puasa"],c:0},
+{q:"Apakah amalan yang digalakkan ketika bersahur?",a:["Melewatkan sahur sehingga hampir waktu Subuh tanpa melampaui fajar","Makan selepas Subuh","Tidak bersahur langsung","Tidur sehingga tengah hari"],c:0},
+{q:"Apakah amalan sunat ketika berbuka?",a:["Menyegerakan berbuka apabila matahari terbenam","Melambatkan berbuka hingga tengah malam","Tidak berbuka","Makan secara berlebihan"],c:0},
+{q:"Apakah makanan yang disunatkan untuk berbuka jika ada?",a:["Kurma","Gula-gula sahaja","Makanan pedas","Makanan yang sangat masam"],c:0},
+{q:"Apakah hukum berdusta ketika berpuasa?",a:["Berdosa dan mengurangkan kesempurnaan pahala puasa","Menambahkan pahala","Wajib dilakukan","Membatalkan puasa secara automatik"],c:0},
+{q:"Apakah hukum mengumpat ketika berpuasa?",a:["Berdosa dan merosakkan pahala puasa","Sunat","Wajib","Tidak mempunyai kesan terhadap akhlak"],c:0},
+{q:"Apakah yang dimaksudkan dengan imsak?",a:["Waktu seseorang mula menahan diri daripada perkara yang membatalkan puasa apabila masuk fajar","Waktu tidur","Waktu berbuka","Waktu solat Asar"],c:0},
+{q:"Apakah hukum mandi ketika berpuasa?",a:["Harus","Haram","Membatalkan puasa secara automatik","Wajib setiap jam"],c:0},
+{q:"Apakah hukum memberus gigi ketika berpuasa?",a:["Harus dengan berhati-hati supaya tiada bahan ditelan","Haram sepanjang hari","Membatalkan puasa secara automatik","Wajib selepas setiap jam"],c:0},
+{q:"Seseorang muntah dengan sengaja. Apakah hukumnya terhadap puasa?",a:["Puasa batal","Puasa bertambah pahala","Tiada kesan dalam semua keadaan","Puasa menjadi sunat"],c:0},
+{q:"Seseorang muntah tanpa disengajakan. Apakah hukumnya?",a:["Puasa tidak batal jika dia tidak menelan semula muntah","Puasa pasti batal","Wajib membayar fidyah","Wajib berbuka"],c:0},
+{q:"Apakah hukum memasukkan sesuatu ke dalam badan melalui mulut sehingga ditelan dengan sengaja ketika berpuasa?",a:["Membatalkan puasa","Menambahkan pahala","Tidak mempunyai kesan","Menjadikan puasa sah sepanjang masa"],c:0},
+{q:"Apakah hukum merokok ketika berpuasa?",a:["Membatalkan puasa","Sunat","Tidak membatalkan puasa","Wajib"],c:0},
+{q:"Apakah hukum menelan air ketika berkumur secara sengaja?",a:["Membatalkan puasa","Tidak memberi kesan","Sunat","Menambah pahala"],c:0},
+{q:"Apakah hukum berenang ketika berpuasa jika air masuk ke dalam rongga badan melalui laluan terbuka?",a:["Boleh membatalkan puasa jika air masuk dengan sengaja atau berlaku kecuaian yang diiktiraf syarak","Sentiasa wajib","Sentiasa sunat","Tidak mungkin memberi kesan"],c:0},
+{q:"Siapakah yang mendapat rukhsah atau kelonggaran untuk tidak berpuasa kerana sakit yang memudaratkan?",a:["Orang sakit yang memenuhi syarat keuzuran","Semua orang yang sihat","Orang yang malas","Semua kanak-kanak tanpa pengecualian"],c:0},
+{q:"Apakah yang perlu dilakukan oleh orang sakit yang meninggalkan puasa dan dijangka sembuh?",a:["Mengqadakan puasa yang ditinggalkan","Membayar zakat fitrah sahaja","Tidak perlu melakukan apa-apa","Berpuasa dua kali sehari"],c:0},
+{q:"Apakah hukum puasa bagi wanita yang sedang haid?",a:["Tidak sah berpuasa dan wajib qada selepas Ramadan","Wajib terus berpuasa","Sunat berpuasa","Tidak perlu qada"],c:0},
+{q:"Apakah yang perlu dilakukan oleh wanita yang meninggalkan puasa Ramadan kerana haid?",a:["Mengqadakan puasa selepas suci","Membayar fidyah sahaja dalam semua keadaan","Tidak perlu menggantikannya","Menggantikan dengan solat"],c:0},
+{q:"Apakah hukum puasa bagi wanita yang mengalami nifas?",a:["Tidak sah berpuasa dan wajib qada","Wajib berpuasa","Sunat berpuasa","Tidak perlu qada"],c:0},
+{q:"Apakah hukum orang yang bermusafir dan memenuhi syarat rukhsah puasa?",a:["Diberi kelonggaran untuk berbuka dan wajib qada kemudian","Wajib berbuka tanpa qada","Tidak boleh berbuka dalam apa-apa keadaan","Wajib membayar zakat sahaja"],c:0},
+{q:"Apakah maksud qada puasa?",a:["Menggantikan puasa wajib yang ditinggalkan pada hari lain","Membayar zakat fitrah","Memberi makanan kepada jiran sahaja","Berpuasa pada waktu malam"],c:0},
+{q:"Apakah maksud fidyah puasa?",a:["Bayaran atau pemberian makanan kepada golongan yang berhak mengikut ketetapan syarak kerana keadaan tertentu berkaitan puasa","Menggantikan solat","Hadiah kepada rakan","Bayaran untuk membeli kurma"],c:0},
+{q:"Siapakah antara golongan yang boleh dikenakan fidyah kerana tidak mampu berpuasa secara kekal?",a:["Orang tua yang terlalu uzur dan tidak mampu berpuasa","Orang muda yang sihat","Orang yang sengaja tidak mahu berpuasa","Semua murid sekolah"],c:0},
+{q:"Apakah maksud puasa enam?",a:["Puasa sunat enam hari dalam bulan Syawal","Puasa enam hari dalam Ramadan","Puasa setiap enam bulan","Puasa pada enam waktu sehari"],c:0},
+{q:"Apakah hukum puasa pada Hari Raya Aidilfitri?",a:["Haram","Wajib","Sunat","Harus"],c:0},
+{q:"Apakah hukum berpuasa pada Hari Raya Aidiladha?",a:["Haram","Wajib","Sunat","Makruh sahaja"],c:0},
+{q:"Apakah puasa sunat yang dilakukan pada hari Isnin dan Khamis?",a:["Puasa Isnin dan Khamis","Puasa nazar","Puasa Ramadan","Puasa kaffarah"],c:0},
+{q:"Apakah hikmah utama ibadah puasa?",a:["Mendidik takwa, sabar dan mengawal nafsu","Menjadi kaya dengan segera","Mengelakkan semua pekerjaan","Mendapat pujian manusia"],c:0},
+{q:"Apakah maksud takwa dalam konteks ibadah puasa?",a:["Melaksanakan perintah Allah dan menjauhi larangan-Nya","Menunjuk-nunjuk kepada orang lain","Tidak bercakap sepanjang bulan","Makan sebanyak mungkin ketika berbuka"],c:0},
+{q:"Apakah hukum meninggalkan puasa Ramadan dengan sengaja tanpa uzur?",a:["Berdosa besar","Amalan sunat","Tidak mempunyai apa-apa kesan","Digalakkan"],c:0},
+{q:"Apakah yang perlu dilakukan jika seseorang terlupa berniat puasa fardu Ramadan pada malam hari menurut mazhab Syafie?",a:["Puasa hari itu tidak sah sebagai puasa Ramadan dan wajib imsak serta qada","Puasa tetap sah dalam semua keadaan","Tidak perlu qada","Boleh makan sepanjang hari tanpa sebarang tanggungjawab"],c:0},
+{q:"Apakah hukum orang yang pengsan sepanjang hari puasa dari sebelum fajar hingga selepas matahari terbenam?",a:["Puasa tidak sah dan perlu qada","Puasa pasti sah","Tidak perlu melakukan apa-apa","Mendapat puasa enam"],c:0},
+{q:"Apakah hukum menelan air liur sendiri yang bersih ketika berpuasa?",a:["Tidak membatalkan puasa","Membatalkan puasa","Wajib qada","Wajib fidyah"],c:0},
+{q:"Apakah hukum menggunakan ubat titis mata ketika berpuasa menurut pandangan yang membenarkannya?",a:["Tidak membatalkan puasa menurut pandangan tersebut","Sentiasa membatalkan puasa","Wajib qada dalam semua keadaan","Haram digunakan"],c:0},
+{q:"Apakah tindakan yang betul jika seseorang mengetahui bahawa waktu Subuh telah masuk tetapi masih makan dengan sengaja?",a:["Berhenti makan dan dia perlu mengqadakan puasa hari itu","Terus makan sehingga kenyang","Puasa tetap sah","Tidak perlu melakukan apa-apa"],c:0},
+{q:"Apakah yang dimaksudkan dengan kaffarah puasa?",a:["Denda ibadah tertentu bagi kesalahan tertentu yang ditetapkan syarak","Zakat fitrah","Sedekah biasa","Hadiah kepada guru"],c:0},
+{q:"Apakah hukum berniat puasa nazar yang telah diwajibkan ke atas diri sendiri?",a:["Wajib menunaikannya","Sunat sahaja","Haram","Tidak perlu dilakukan"],c:0},
+{q:"Apakah tujuan solat Tarawih pada bulan Ramadan?",a:["Ibadah solat sunat malam Ramadan","Menggantikan solat Subuh","Menggantikan puasa","Membatalkan puasa"],c:0},
+{q:"Apakah malam yang sangat istimewa dalam bulan Ramadan dan disebut lebih baik daripada seribu bulan?",a:["Lailatulqadar","Malam Nisfu Syaaban","Malam Aidilfitri","Malam Jumaat sahaja"],c:0},
+{q:"Apakah amalan yang digalakkan ketika sepuluh malam terakhir Ramadan?",a:["Memperbanyak ibadah dan mencari Lailatulqadar","Mengurangkan semua ibadah","Tidak bersolat","Berbuka sebelum waktunya"],c:0},
+{q:"Apakah hukum menyegerakan berbuka selepas yakin matahari terbenam?",a:["Sunat","Haram","Makruh","Wajib menangguhkannya"],c:0},
+{q:"Apakah tindakan yang betul apabila seseorang tidak pasti sama ada matahari telah terbenam?",a:["Menunggu sehingga yakin waktu berbuka telah masuk","Terus berbuka tanpa kepastian","Membatalkan puasa","Tidak perlu berpuasa esok"],c:0},
+{q:"Apakah hukum berpuasa pada hari tasyrik, iaitu 11, 12 dan 13 Zulhijjah?",a:["Haram kecuali pengecualian tertentu bagi jemaah haji yang memenuhi ketetapan","Wajib bagi semua orang","Sunat bagi semua orang","Wajib qada"],c:0},
+{q:"Apakah maksud puasa Arafah bagi orang yang tidak mengerjakan haji?",a:["Puasa sunat pada 9 Zulhijjah","Puasa wajib pada 1 Syawal","Puasa pada 10 Muharam","Puasa setiap hari Jumaat"],c:0},
+{q:"Apakah maksud puasa Asyura?",a:["Puasa sunat pada 10 Muharam","Puasa wajib pada Ramadan","Puasa pada hari raya","Puasa pada 1 Syawal"],c:0},
+{q:"Apakah hukum mengkhususkan hari Jumaat sahaja untuk puasa sunat tanpa sebab tertentu?",a:["Makruh menurut ketetapan fiqh, kecuali disertakan hari sebelum atau selepas atau ada sebab tertentu","Wajib","Haram dalam semua keadaan","Fardu ain"],c:0},
+{q:"Apakah yang perlu dilakukan jika seseorang meninggalkan puasa Ramadan kerana hamil atau menyusukan anak dan bimbang mudarat?",a:["Mengikut keadaan dan ketetapan hukum, termasuk qada dan fidyah apabila berkenaan","Tidak perlu mengganti dalam semua keadaan","Wajib membayar zakat sahaja","Terus berpuasa walaupun memudaratkan"],c:0},
+{q:"Apakah hukum memasukkan ubat melalui suntikan yang bukan makanan atau pengganti makanan ketika berpuasa menurut pandangan fiqh yang membenarkannya?",a:["Tidak membatalkan puasa menurut pandangan tersebut","Sentiasa membatalkan puasa","Wajib qada","Haram dalam semua keadaan"],c:0},
+{q:"Apakah maksud puasa kaffarah?",a:["Puasa yang diwajibkan sebagai kaffarah bagi kesalahan tertentu","Puasa sunat enam","Puasa setiap hari Isnin","Puasa untuk menurunkan berat badan"],c:0},
+{q:"Apakah tindakan terbaik jika seseorang marah ketika berpuasa?",a:["Bersabar, mengawal emosi dan mengelakkan pergaduhan","Membalas dengan lebih kasar","Mengumpat orang lain","Meninggalkan ibadah"],c:0},
+{q:"Apakah hukum berpuasa bagi kanak-kanak yang belum baligh?",a:["Belum wajib, tetapi boleh dilatih berpuasa mengikut kemampuan","Wajib seperti orang dewasa","Haram","Tidak boleh berpuasa"],c:0},
+{q:"Apakah perkara yang paling penting ketika melaksanakan ibadah puasa?",a:["Ikhlas kerana Allah dan mematuhi hukum syarak","Menunjukkan kepada orang lain","Bersaing untuk mendapat pujian","Makan banyak ketika sahur"],c:0}
+];
+
+/* AUDIO */
+
+function initAudio(){
+ try{
+  if(!audioCtx)audioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(audioCtx.state==="suspended")audioCtx.resume();
+ }catch(e){}
+}
+
+function tone(freq,duration,type="square",volume=.08,endFreq=null){
+ try{
+  initAudio();
+  if(!audioCtx)return;
+  const osc=audioCtx.createOscillator();
+  const gain=audioCtx.createGain();
+  osc.type=type;
+  osc.frequency.setValueAtTime(freq,audioCtx.currentTime);
+  if(endFreq)osc.frequency.exponentialRampToValueAtTime(Math.max(1,endFreq),audioCtx.currentTime+duration);
+  gain.gain.setValueAtTime(volume,audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(.001,audioCtx.currentTime+duration);
+  osc.connect(gain);gain.connect(audioCtx.destination);
+  osc.start();osc.stop(audioCtx.currentTime+duration);
+ }catch(e){}
+}
+
+function soundShoot(){tone(850,.07,"square",.045,420)}
+function soundLaser(){tone(1200,.18,"sawtooth",.055,200)}
+function soundBomb(){tone(100,.65,"sawtooth",.16,35);setTimeout(()=>tone(65,.55,"triangle",.12,25),100)}
+function soundExplosion(){tone(110,.3,"sawtooth",.09,35)}
+function soundSuccess(){tone(600,.18,"sine");setTimeout(()=>tone(800,.18,"sine"),130);setTimeout(()=>tone(1100,.35,"sine"),260)}
+
+function say(text){
+ if(!window.speechSynthesis)return;
+ try{
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(text);
+  u.lang="ms-MY";u.rate=.85;u.pitch=1;
+  speechSynthesis.speak(u);
+ }catch(e){}
+}
+
+function message(text){document.getElementById("message").textContent=text}
+
+/* HUD */
+
+function updateHUD(){
+ document.getElementById("hp").textContent="❤️ "+hp;
+ document.getElementById("score").textContent="⭐ "+score;
+ document.getElementById("gems").textContent="💎 "+gems;
+ document.getElementById("bombs").textContent="💣 "+bombCount;
+ document.getElementById("level").textContent="🏆 STAGE "+level;
+ document.getElementById("progress").textContent=kills+"/"+targets[level-1];
+}
+
+/* MULA */
+
+async function startGame(){
+ initAudio();
+ try{
+  if(document.documentElement.requestFullscreen)await document.documentElement.requestFullscreen();
+  if(screen.orientation?.lock)await screen.orientation.lock("landscape");
+ }catch(e){}
+
+ if(window.speechSynthesis)speechSynthesis.cancel();
+
+ player={x:100,y:220};
+ bullets=[];enemies=[];enemyShots=[];items=[];particles=[];
+ score=0;gems=0;hp=MAX_HP;kills=0;totalKills=0;
+ level=1;bombCount=3;bulletType=0;
+ boss=null;bossSpawned=false;flying=false;
+ active=true;paused=false;shootHeld=false;
+ joy={x:0,y:0};keys={};
+ shieldUntil=0;hitCount=0;lastHit=0;gameTime=0;lastTime=0;
+ lastSpawn=performance.now();lastItem=performance.now();
+ questionDeck=[];questionPosition=0;
+ quizCorrect=0;quizMode="single";quizLocked=false;
+
+ document.getElementById("startScreen").style.display="none";
+ document.getElementById("endScreen").style.display="none";
+ document.getElementById("quizScreen").style.display="none";
+ updateHUD();
+ message("🌟 MISI ILMU PUASA BERMULA!");
+ say("Selamat datang. Bersiaplah menguasai ilmu ibadah puasa!");
+}
+
+/* TRANSFORM */
+
+function transform(){
+ if(!active||paused)return;
+ flying=!flying;
+ for(let i=0;i<25;i++)burst(player.x+35,player.y+25);
+ tone(350,.35,"sawtooth",.08,850);
+ message(flying?"✈️ MOD KAPAL TERBANG!":"🚗 MOD KERETA!");
+}
+
+/* TEMBAKAN */
+
+function shoot(){
+ if(!active||paused||Date.now()-lastShot<190)return;
+ lastShot=Date.now();
+
+ const x=player.x+75,y=player.y+30;
+
+ if(bulletType===0){
+  bullets.push({x,y,vy:0,type:0,damage:2});
+ }else if(bulletType===1){
+  [-.12,.12].forEach(a=>bullets.push({x,y,vy:a*650,type:1,damage:2}));
+ }else if(bulletType===2){
+  [-.30,0,.30].forEach(a=>bullets.push({x,y,vy:a*650,type:2,damage:2}));
+ }else{
+  for(let i=0;i<8;i++){
+   const angle=(i-3.5)*.13;
+   bullets.push({x,y,vy:angle*650,type:3,damage:2});
+  }
+ }
+ if(bulletType===3)soundLaser();else soundShoot();
+}
+
+function changeBullet(type){
+ bulletType=Math.max(0,Math.min(3,type));
+ message("💥 "+bulletNames[bulletType]+"!");
+ soundSuccess();
+}
+
+/* BOM */
+
+function bomb(){
+ if(!active||paused||bombCount<=0)return;
+ bombCount--;
+ explosion(player.x+120,player.y+20);
+
+ enemies.forEach(e=>{
+  if(Math.abs(e.x-player.x)<550){
+   e.hp-=7;
+   if(e.hp<=0)killEnemy(e);
+  }
+ });
+ enemies=enemies.filter(e=>!e.dead);
+ if(boss){
+  boss.hp-=15;
+  if(boss.hp<=0)winGame();
+ }
+ enemyShots=[];
+ updateHUD();
+ message("💣 BOM MEGA!");
+ soundBomb();
+}
+
+/* JOYSTICK */
+
+const joyBase=document.getElementById("joystick");
+const stick=document.getElementById("stick");
+let joyPointer=null;
+
+function joystickMove(e){
+ const r=joyBase.getBoundingClientRect();
+ let dx=e.clientX-(r.left+r.width/2);
+ let dy=e.clientY-(r.top+r.height/2);
+ const max=r.width*.34;
+ const len=Math.hypot(dx,dy);
+ if(len>max){dx=dx/len*max;dy=dy/len*max;}
+ joy.x=dx/max;joy.y=dy/max;
+ stick.style.left=(30+joy.x*30)+"%";
+ stick.style.top=(30+joy.y*30)+"%";
+}
+
+function joystickEnd(){
+ joy.x=0;joy.y=0;stick.style.left="30%";stick.style.top="30%";
+}
+
+joyBase.addEventListener("pointerdown",e=>{
+ e.preventDefault();joyPointer=e.pointerId;
+ joyBase.setPointerCapture(e.pointerId);joystickMove(e);
+});
+joyBase.addEventListener("pointermove",e=>{if(e.pointerId===joyPointer)joystickMove(e)});
+joyBase.addEventListener("pointerup",e=>{if(e.pointerId===joyPointer){joyPointer=null;joystickEnd()}});
+joyBase.addEventListener("pointercancel",()=>{joyPointer=null;joystickEnd()});
+
+const fireBtn=document.getElementById("fire");
+fireBtn.addEventListener("pointerdown",e=>{
+ e.preventDefault();shootHeld=true;
+ fireBtn.setPointerCapture(e.pointerId);shoot();
+});
+function stopFire(){shootHeld=false}
+fireBtn.addEventListener("pointerup",stopFire);
+fireBtn.addEventListener("pointercancel",stopFire);
+fireBtn.addEventListener("lostpointercapture",stopFire);
+
+document.getElementById("bomb").addEventListener("pointerdown",e=>{e.preventDefault();bomb()});
+document.getElementById("transformBtn").addEventListener("pointerdown",e=>{e.preventDefault();transform()});
+
+document.addEventListener("keydown",e=>{
+ const k=e.key.toLowerCase();
+ if(["arrowup","arrowdown","arrowleft","arrowright"," "].includes(k))e.preventDefault();
+ keys[k]=true;
+ if(k===" ")shoot();
+ if(k==="t")transform();
+ if(k==="b")bomb();
+});
+document.addEventListener("keyup",e=>{keys[e.key.toLowerCase()]=false});
+
+function getMovement(){
+ let x=joy.x,y=joy.y;
+ if(keys.arrowleft||keys.a)x-=1;
+ if(keys.arrowright||keys.d)x+=1;
+ if(keys.arrowup||keys.w)y-=1;
+ if(keys.arrowdown||keys.s)y+=1;
+ const len=Math.hypot(x,y);
+ if(len>1){x/=len;y/=len;}
+ return{x,y};
+}
+
+/* PARTIKEL */
+
+function burst(x,y){
+ particles.push({
+  x,y,vx:(Math.random()-.5)*9,vy:(Math.random()-.5)*9,
+  life:35+Math.random()*25,maxLife:60,
+  size:2+Math.random()*5,
+  color:["#fff000","#ff3c9c","#31ffff","#8aff3c","#b56aff","#ff8a24"][Math.floor(Math.random()*6)]
+ });
+}
+
+function explosion(x,y){
+ for(let i=0;i<45;i++)burst(x,y);
+ soundExplosion();
+}
+
+/* MUSUH PELBAGAI JENIS */
+
+const enemyTypes=[
+ {name:"NAGA",emoji:"🐉",hp:9,speed:1.0,damage:1},
+ {name:"HARIMAU",emoji:"🐯",hp:7,speed:1.25,damage:1},
+ {name:"SERIGALA",emoji:"🐺",hp:6,speed:1.45,damage:1},
+ {name:"KELAWAR",emoji:"🦇",hp:5,speed:1.6,damage:1},
+ {name:"ULAR",emoji:"🐍",hp:8,speed:1.15,damage:1},
+ {name:"BADAK",emoji:"🦏",hp:13,speed:.8,damage:2},
+ {name:"BUAYA",emoji:"🐊",hp:11,speed:1.0,damage:2},
+ {name:"RAPTOR",emoji:"🦖",hp:10,speed:1.35,damage:2}
+];
+
+function spawnEnemy(){
+ if(enemies.length>=18||boss)return;
+
+ const type=Math.floor(Math.random()*enemyTypes.length);
+ const info=enemyTypes[type];
+ const y=40+Math.random()*380;
+ const strength=1+(level-1)*.16;
+
+ enemies.push({
+  x:950+Math.random()*100,y,baseY:y,
+  hp:info.hp*strength,maxHp:info.hp*strength,
+  type,dead:false,phase:Math.random()*6,
+  speedFactor:.8+Math.random()*.5,
+  shotTimer:Math.random()*1.5
+ });
+}
+
+function spawnItem(){
+ items.push({x:930,y:50+Math.random()*380,type:Math.floor(Math.random()*7)});
+}
+function spawnItemAt(x,y){
+ items.push({x,y,type:Math.floor(Math.random()*7)});
+}
+
+function collision(a,b,d=35){
+ return Math.abs(a.x-b.x)<d&&Math.abs(a.y-b.y)<d;
+}
+
+function killEnemy(e){
+ if(e.dead)return;
+ e.dead=true;score+=100;kills++;totalKills++;
+ explosion(e.x,e.y);
+ if(Math.random()<.35)spawnItemAt(e.x,e.y);
+ updateHUD();
+}
+
+/* SERANGAN MUSUH */
+
+function enemyFire(e){
+ const sx=e.x+20,sy=e.y+30;
+ const dx=(player.x+40)-sx;
+ const dy=(player.y+30)-sy;
+ const len=Math.hypot(dx,dy)||1;
+ const speed=level===5?330:245+level*20;
+
+ enemyShots.push({
+  x:sx,y:sy,
+  vx:dx/len*speed,
+  vy:dy/len*speed,
+  damage:enemyTypes[e.type].damage,
+  type:e.type
+ });
+
+ tone(230,.06,"square",.018,120);
+}
+
+/* SISTEM SERANGAN DAN KUIZ */
+
+function damage(){
+ if(!active||paused)return;
+ if(Date.now()<shieldUntil)return;
+ if(Date.now()-lastHit<350)return;
+
+ lastHit=Date.now();
+ hitCount++;
+
+ tone(150,.15,"sawtooth",.08,70);
+
+ if(hitCount<HITS_PER_LIFE){
+  message("⚠️ TERKENA TEMBAKAN "+hitCount+"/5! JAWAB SOALAN PUASA!");
+  startDeathQuiz("single");
+ }else{
+  hitCount=0;
+  hp=Math.max(0,hp-1);
+  updateHUD();
+  shieldUntil=Date.now()+1800;
+
+  if(hp<=0){
+   gameOver();
+   return;
+  }
+
+  message("💔 NYAWA BERKURANG! JAWAB 4 SOALAN UNTUK SAMBUNG!");
+  startDeathQuiz("life");
+ }
+}
+
+/* SOALAN RAWAK */
+
+function getQuestion(){
+ if(questionDeck.length===0||questionPosition>=questionDeck.length){
+  questionDeck=questions.map((q,index)=>({
+   q:q.q,
+   a:[...q.a],
+   c:q.c,
+   original:index
+  }));
+
+  // Susun pilihan jawapan supaya jawapan betul tidak sentiasa A
+  questionDeck.forEach(q=>{
+   const correct=q.a[q.c];
+   for(let i=q.a.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [q.a[i],q.a[j]]=[q.a[j],q.a[i]];
+   }
+   q.c=q.a.indexOf(correct);
+  });
+
+  for(let i=questionDeck.length-1;i>0;i--){
+   const j=Math.floor(Math.random()*(i+1));
+   [questionDeck[i],questionDeck[j]]=[questionDeck[j],questionDeck[i]];
+  }
+  questionPosition=0;
+ }
+
+ return questionDeck[questionPosition++];
+}
+
+/* PAPAR KUIZ */
+
+function startDeathQuiz(mode){
+ if(!active)return;
+ paused=true;
+ shootHeld=false;
+ quizLocked=false;
+ quizMode=mode;
+ quizIndex=0;
+ quizCorrect=0;
+ quizQuestions=[];
+
+ const count=mode==="life"?4:1;
+ for(let i=0;i<count;i++)quizQuestions.push(getQuestion());
+
+ const screen=document.getElementById("quizScreen");
+ screen.style.display="flex";
+
+ document.getElementById("quizStage").textContent="🌈 STAGE "+level+" - UJIAN IBADAH PUASA";
+
+ document.getElementById("quizInfo").textContent=
+ mode==="life"
+ ?"NYAWA TELAH HILANG! Jawab 4 soalan berturut-turut dengan betul untuk meneruskan permainan. Satu jawapan salah bermakna permainan bermula semula."
+ :"Anda terkena serangan! Jawab satu soalan tentang ibadah puasa untuk meneruskan permainan.";
+
+ document.getElementById("quizFeedback").textContent="";
+ showDeathQuestion();
+}
+
+function showDeathQuestion(){
+ const current=quizQuestions[quizIndex];
+ const box=document.getElementById("answers");
+
+ document.getElementById("quizQuestion").textContent=current.q;
+
+ document.getElementById("quizCounter").textContent=
+ quizMode==="life"
+ ?"SOALAN "+(quizIndex+1)+" DARIPADA 4"
+ :"1 SOALAN SAHAJA";
+
+ document.getElementById("quizProgressFill").style.width=
+ (quizIndex/quizQuestions.length*100)+"%";
+
+ box.innerHTML="";
+ document.getElementById("quizFeedback").textContent="";
+
+ current.a.forEach((answer,i)=>{
+  const btn=document.createElement("button");
+  btn.className="answerBtn";
+  btn.type="button";
+  btn.textContent=String.fromCharCode(65+i)+". "+answer;
+  btn.addEventListener("click",e=>{
+   e.preventDefault();
+   e.stopPropagation();
+   answerDeathQuiz(i);
+  });
+  box.appendChild(btn);
+ });
+
+ if(window.speechSynthesis){
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(current.q);
+  u.lang="ms-MY";
+  u.rate=.85;
+  speechSynthesis.speak(u);
+ }
+}
+
+/* SEMAK JAWAPAN */
+
+function answerDeathQuiz(index){
+ if(quizLocked||!active)return;
+
+ const current=quizQuestions[quizIndex];
+ const feedback=document.getElementById("quizFeedback");
+
+ if(index===current.c){
+  quizCorrect++;
+  quizIndex++;
+  soundSuccess();
+
+  if(quizIndex>=quizQuestions.length){
+   quizLocked=true;
+   feedback.textContent="🏆 ALHAMDULILLAH! SEMUA JAWAPAN BETUL!";
+   document.getElementById("quizProgressFill").style.width="100%";
+
+   const box=document.getElementById("answers");
+   box.innerHTML="";
+   const btn=document.createElement("button");
+   btn.textContent="▶ TERUSKAN PERMAINAN";
+   btn.addEventListener("click",resumeAfterQuiz);
+   box.appendChild(btn);
+
+   say("Tahniah! Semua soalan ibadah puasa dijawab dengan betul. Anda boleh meneruskan permainan!");
+  }else{
+   feedback.textContent="✅ BETUL! TERUSKAN KE SOALAN SETERUSNYA.";
+   say("Betul! Bagus! Teruskan.");
+   setTimeout(()=>{
+    if(active&&paused&&!quizLocked)showDeathQuestion();
+   },700);
+  }
+
+ }else{
+  if(quizMode==="life"){
+   quizLocked=true;
+   feedback.textContent="❌ SALAH! PERMAINAN BERMULA SEMULA!";
+   say("Jawapan salah. Anda perlu memulakan permainan semula.");
+   setTimeout(()=>{
+    if(active)gameOver();
+   },1200);
+  }else{
+   feedback.textContent="❌ BELUM TEPAT! CUBA SEKALI LAGI.";
+   tone(180,.3,"sawtooth");
+   say("Belum tepat. Cuba sekali lagi.");
+  }
+ }
+}
+
+/* SAMBUNG PERMAINAN */
+
+function resumeAfterQuiz(){
+ if(!active)return;
+ document.getElementById("quizScreen").style.display="none";
+ hitCount=0;
+ shieldUntil=Date.now()+2500;
+ paused=false;
+ updateHUD();
+ message("🌟 SYABAS! TERUSKAN MISI PUASA!");
+ soundSuccess();
+}
+
+/* GAME OVER */
+
+function gameOver(){
+ if(!active)return;
+ active=false;paused=false;shootHeld=false;
+ bullets=[];enemies=[];enemyShots=[];items=[];boss=null;
+
+ document.getElementById("quizScreen").style.display="none";
+ document.getElementById("endScreen").style.display="flex";
+ document.getElementById("endTitle").textContent="💀 GAME OVER!";
+
+ document.getElementById("endText").textContent=
+ "Skor akhir: "+score+
+ ". Musuh ditewaskan: "+totalKills+
+ ". Permata: "+gems+
+ ". Cuba lagi untuk menguasai ilmu ibadah puasa!";
+
+ soundExplosion();
+ say("Game over! Jangan berputus asa. Cuba lagi!");
+}
+
+/* STAGE */
+
+function advanceStage(){
+ if(!active||paused||bossSpawned)return;
+
+ if(level<5){
+  level++;kills=0;
+  enemies=[];enemyShots=[];bullets=[];items=[];
+  boss=null;bossSpawned=false;
+  bulletType=0;paused=true;
+  updateHUD();
+
+  message("🏆 TAHNIAH! STAGE "+level+"!");
+  say("Tahniah pahlawan! Anda kini berada di stage "+level);
+
+  setTimeout(()=>{
+   if(!active)return;
+   paused=false;
+   lastSpawn=performance.now();
+   message("⚔️ STAGE "+level+" BERMULA!");
+  },1800);
+ }else{
+  spawnBoss();
+ }
+}
+
+/* BOSS */
+
+function spawnBoss(){
+ if(!active||bossSpawned)return;
+ bossSpawned=true;
+ enemies=[];enemyShots=[];
+ boss={x:730,y:170,hp:240,maxHp:240,phase:0,shotTimer:0};
+ paused=false;
+ message("⚠️ BOSS NAGA PUASA MUNCUL!");
+ say("Amaran! Boss naga terakhir muncul! Bersiap sedia!");
+}
+
+function winGame(){
+ if(!active)return;
+ active=false;paused=false;shootHeld=false;
+ if(boss){explosion(boss.x,boss.y);score+=3000;boss=null;}
+
+ document.getElementById("endScreen").style.display="flex";
+ document.getElementById("endTitle").textContent="🏆 ANDA JUARA!";
+
+ document.getElementById("endText").textContent=
+ "ALHAMDULILLAH! Semua lima stage berjaya diselesaikan! "+
+ "Skor: "+score+
+ ". Musuh ditewaskan: "+totalKills+
+ ". Permata: "+gems+
+ ". Tahniah, anda PAHLAWAN ILMU PUASA!";
+
+ soundSuccess();
+ say("Tahniah! Anda juara! Anda telah berjaya menyelesaikan misi dan menguasai ilmu puasa!");
+}
+
+/* LATAR BELAKANG */
+
+function background(){
+ const g=ctx.createLinearGradient(0,0,0,H);
+ g.addColorStop(0,"#21caff");
+ g.addColorStop(.65,"#b1f6ff");
+ g.addColorStop(1,"#fff0ad");
+ ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
+
+ ctx.fillStyle="#fff34b";ctx.shadowBlur=25;ctx.shadowColor="#fff34b";
+ ctx.beginPath();ctx.arc(770,75,43,0,Math.PI*2);ctx.fill();
+ ctx.shadowBlur=0;
+
+ ctx.fillStyle="#a18ae1";
+ ctx.beginPath();
+ ctx.moveTo(0,330);ctx.lineTo(170,125);ctx.lineTo(340,340);
+ ctx.lineTo(500,170);ctx.lineTo(720,345);ctx.lineTo(900,190);
+ ctx.lineTo(900,420);ctx.lineTo(0,420);ctx.fill();
+
+ for(let i=0;i<10;i++){
+  const x=i*100,h=65+(i*37)%100;
+  ctx.fillStyle=["#ff77b7","#ffca52","#67caff","#8f72df"][i%4];
+  ctx.fillRect(x,420-h,72,h);
+  ctx.fillStyle="#fff5a2";
+  for(let y=430-h;y<405;y+=22){
+   for(let z=x+12;z<x+65;z+=23)ctx.fillRect(z,y,10,12);
+  }
+ }
+
+ ctx.fillStyle="#515d85";ctx.fillRect(0,440,900,60);
+ ctx.fillStyle="white";
+ for(let x=0;x<900;x+=100)ctx.fillRect(x,468,45,6);
+
+ for(let i=0;i<5;i++){
+  const x=(i*245+60+gameTime*30)%1000-60;
+  const y=75+i%2*65;
+  ctx.fillStyle="white";
+  ctx.beginPath();
+  ctx.arc(x,y,23,0,Math.PI*2);
+  ctx.arc(x+27,y-10,30,0,Math.PI*2);
+  ctx.arc(x+58,y,24,0,Math.PI*2);
+  ctx.fill();
+ }
+}
+
+/* PEMAIN */
+
+function drawPlayer(){
+ ctx.save();
+ const x=player.x,y=player.y;
+
+ if(Date.now()<shieldUntil){
+  ctx.strokeStyle="#fff36a";ctx.lineWidth=5;
+  ctx.shadowBlur=20;ctx.shadowColor="#fff36a";
+  ctx.beginPath();ctx.arc(x+48,y+30,58,0,Math.PI*2);ctx.stroke();
+ }
+
+ ctx.shadowBlur=15;ctx.shadowColor="#ff299a";
+
+ if(flying){
+  ctx.fillStyle="#ffb52b";
+  ctx.beginPath();
+  ctx.moveTo(x+105,y+30);ctx.lineTo(x+15,y);
+  ctx.lineTo(x+34,y+27);ctx.lineTo(x+5,y+55);
+  ctx.lineTo(x+45,y+48);ctx.closePath();ctx.fill();
+  ctx.fillStyle="#00eaff";ctx.fillRect(x+45,y+23,30,13);
+ }else{
+  const grad=ctx.createLinearGradient(x,y,x,y+60);
+  grad.addColorStop(0,"#ff9ed0");
+  grad.addColorStop(.45,"#ff287b");
+  grad.addColorStop(1,"#9d145b");
+  ctx.fillStyle=grad;
+  ctx.beginPath();
+  ctx.moveTo(x+5,y+30);ctx.lineTo(x+20,y+12);
+  ctx.lineTo(x+68,y+12);ctx.lineTo(x+88,y+29);
+  ctx.lineTo(x+96,y+48);ctx.lineTo(x,y+48);
+  ctx.closePath();ctx.fill();
+
+  ctx.fillStyle="#9df5ff";
+  ctx.beginPath();ctx.moveTo(x+27,y+15);ctx.lineTo(x+63,y+15);
+  ctx.lineTo(x+78,y+29);ctx.lineTo(x+18,y+29);
+  ctx.closePath();ctx.fill();
+
+  ctx.fillStyle="#fff36a";ctx.fillRect(x+86,y+32,10,8);
+  ctx.fillStyle="#222333";
+  ctx.beginPath();ctx.arc(x+23,y+48,12,0,Math.PI*2);
+  ctx.arc(x+76,y+48,12,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#b6faff";
+  ctx.beginPath();ctx.arc(x+23,y+48,5,0,Math.PI*2);
+  ctx.arc(x+76,y+48,5,0,Math.PI*2);ctx.fill();
+ }
+ ctx.restore();
+}
+
+/* LUKIS MUSUH BERBENTUK HAIWAN */
+
+function drawEnemy(e){
+ ctx.save();
+ const x=e.x,y=e.y;
+ const colors=["#d42c2c","#dca52b","#7777d9","#6b4a9b","#32a58c","#888888","#369a54","#3e7a3e"];
+ const color=colors[e.type];
+
+ ctx.shadowBlur=13;ctx.shadowColor=color;
+ ctx.fillStyle=color;
+ ctx.strokeStyle="#271c38";ctx.lineWidth=4;
+
+ if(e.type===0){
+  // NAGA
+  ctx.beginPath();
+  ctx.ellipse(x+38,y+36,38,25,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x+8,y+30);ctx.lineTo(x-22,y+8);ctx.lineTo(x+8,y+49);ctx.fill();
+  ctx.moveTo(x+50,y+20);ctx.lineTo(x+45,y-8);ctx.lineTo(x+66,y+18);ctx.fill();
+  ctx.beginPath();ctx.arc(x+69,y+25,18,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.fillStyle="#fff";ctx.fillRect(x+75,y+18,5,6);
+  ctx.fillStyle="#ffef45";ctx.fillRect(x+78,y+35,12,5);
+  ctx.fillStyle="#f8c12b";
+  ctx.beginPath();ctx.moveTo(x+5,y+25);ctx.lineTo(x-12,y-3);ctx.lineTo(x+30,y+17);ctx.fill();
+ }else if(e.type===1){
+  // HARIMAU
+  ctx.beginPath();ctx.ellipse(x+40,y+37,35,23,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(x+70,y+23,21,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(x+58,y+6,9,0,Math.PI*2);ctx.arc(x+80,y+6,9,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#171717";
+  for(let i=0;i<4;i++)ctx.fillRect(x+17+i*15,y+18,5,32);
+  ctx.fillStyle="white";ctx.fillRect(x+76,y+18,5,5);
+ }else if(e.type===2){
+  // SERIGALA
+  ctx.beginPath();ctx.ellipse(x+38,y+37,34,22,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(x+70,y+25,20,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+57,y+11);ctx.lineTo(x+57,y-12);ctx.lineTo(x+69,y+10);ctx.fill();
+  ctx.moveTo(x+77,y+10);ctx.lineTo(x+90,y-10);ctx.lineTo(x+88,y+19);ctx.fill();
+  ctx.fillStyle="#fff";ctx.fillRect(x+76,y+20,5,5);
+ }else if(e.type===3){
+  // KELAWAR
+  ctx.beginPath();
+  ctx.moveTo(x+38,y+30);ctx.lineTo(x-8,y-3);ctx.lineTo(x+4,y+42);
+  ctx.lineTo(x+23,y+28);ctx.lineTo(x+40,y+55);
+  ctx.lineTo(x+56,y+28);ctx.lineTo(x+82,y+43);
+  ctx.lineTo(x+94,y-3);ctx.lineTo(x+51,y+30);
+  ctx.closePath();ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(x+44,y+28,16,0,Math.PI*2);ctx.fill();
+ }else if(e.type===4){
+  // ULAR
+  ctx.lineWidth=17;ctx.strokeStyle=color;
+  ctx.beginPath();ctx.moveTo(x,y+45);
+  ctx.quadraticCurveTo(x+22,y-5,x+48,y+42);
+  ctx.quadraticCurveTo(x+70,y+75,x+83,y+28);
+  ctx.stroke();
+  ctx.fillStyle=color;ctx.beginPath();ctx.arc(x+82,y+22,16,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="white";ctx.fillRect(x+88,y+17,4,5);
+ }else if(e.type===5){
+  // BADAK
+  ctx.beginPath();ctx.ellipse(x+42,y+37,40,28,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.arc(x+73,y+24,20,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+82,y+15);ctx.lineTo(x+112,y+8);ctx.lineTo(x+87,y+29);ctx.fill();
+ }else if(e.type===6){
+  // BUAYA
+  ctx.beginPath();ctx.ellipse(x+38,y+37,42,19,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+57,y+22);ctx.lineTo(x+98,y+18);ctx.lineTo(x+88,y+40);ctx.lineTo(x+58,y+40);ctx.fill();ctx.stroke();
+  ctx.fillStyle="#fff";for(let i=0;i<4;i++)ctx.fillRect(x+68+i*7,y+35,4,8);
+ }else{
+  // RAPTOR
+  ctx.beginPath();ctx.ellipse(x+37,y+34,31,22,0,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+55,y+26);ctx.lineTo(x+88,y+17);ctx.lineTo(x+73,y+42);ctx.fill();ctx.stroke();
+  ctx.beginPath();ctx.moveTo(x+20,y+45);ctx.lineTo(x+7,y+70);ctx.lineTo(x+30,y+53);ctx.fill();
+  ctx.beginPath();ctx.moveTo(x+42,y+45);ctx.lineTo(x+53,y+70);ctx.lineTo(x+58,y+48);ctx.fill();
+ }
+
+ ctx.shadowBlur=0;
+ ctx.fillStyle="#fff";
+ ctx.fillRect(x+63,y+18,5,5);
+
+ ctx.fillStyle="#ff2222";
+ ctx.fillRect(x,y-12,80,6);
+ ctx.fillStyle="#65ff52";
+ ctx.fillRect(x,y-12,80*Math.max(0,e.hp/e.maxHp),6);
+
+ ctx.font="bold 12px Arial";ctx.textAlign="center";
+ ctx.fillStyle="white";ctx.fillText(enemyTypes[e.type].name,x+40,y-17);
+ ctx.restore();
+}
+
+/* BOSS NAGA */
+
+function drawBoss(){
+ if(!boss)return;
+ ctx.save();
+ ctx.shadowBlur=25;ctx.shadowColor="#b84aff";
+ const grad=ctx.createRadialGradient(boss.x+60,boss.y+40,5,boss.x+65,boss.y+60,85);
+ grad.addColorStop(0,"#ff9cff");grad.addColorStop(1,"#5420a5");
+ ctx.fillStyle=grad;
+ ctx.beginPath();ctx.ellipse(boss.x+65,boss.y+60,75,65,0,0,Math.PI*2);ctx.fill();
+ ctx.beginPath();
+ ctx.moveTo(boss.x+15,boss.y+40);ctx.lineTo(boss.x-40,boss.y+5);
+ ctx.lineTo(boss.x-5,boss.y+70);ctx.fill();
+ ctx.beginPath();ctx.arc(boss.x+110,boss.y+25,35,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#fff15c";
+ ctx.beginPath();ctx.arc(boss.x+98,boss.y+20,10,0,Math.PI*2);ctx.arc(boss.x+125,boss.y+20,10,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="#222";
+ ctx.beginPath();ctx.arc(boss.x+98,boss.y+20,4,0,Math.PI*2);ctx.arc(boss.x+125,boss.y+20,4,0,Math.PI*2);ctx.fill();
+ ctx.shadowBlur=0;
+ ctx.fillStyle="red";ctx.fillRect(boss.x-5,boss.y-20,150,10);
+ ctx.fillStyle="#4bfa65";ctx.fillRect(boss.x-5,boss.y-20,150*Math.max(0,boss.hp/boss.maxHp),10);
+ ctx.fillStyle="white";ctx.font="bold 17px Arial";
+ ctx.fillText("BOSS NAGA TERAKHIR",boss.x-5,boss.y-28);
+ ctx.restore();
+}
+
+/* PAPAR SEMUA */
+
+function draw(){
+ background();
+ drawPlayer();
+
+ bullets.forEach(b=>{
+  ctx.save();
+  ctx.shadowBlur=15;
+  ctx.shadowColor=b.type===3?"cyan":b.type===1?"orange":"yellow";
+  ctx.fillStyle=b.type===3?"#00ffff":b.type===1?"#ff5a00":"#fff400";
+  ctx.beginPath();
+  ctx.ellipse(b.x,b.y, b.type===3?13:9,4,0,0,Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+ });
+
+ enemies.forEach(drawEnemy);
+ items.forEach(t=>{
+  ctx.font="35px Arial";
+  ctx.fillText(["🔥","💥","⚡","❤️","💣","🔫","🌈"][t.type],t.x,t.y);
+ });
+
+ enemyShots.forEach(b=>{
+  ctx.save();
+  ctx.fillStyle="#ff321c";ctx.shadowBlur=12;ctx.shadowColor="red";
+  ctx.beginPath();ctx.arc(b.x,b.y,9,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+ });
+
+ drawBoss();
+
+ particles.forEach(p=>{
+  ctx.globalAlpha=Math.max(0,p.life/p.maxLife);
+  ctx.fillStyle=p.color;
+  ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();
+  ctx.globalAlpha=1;
+ });
+
+ ctx.fillStyle="white";ctx.font="bold 15px Arial";
+ ctx.textAlign="left";
+ ctx.fillText("PELURU: "+bulletNames[bulletType],15,25);
+ ctx.fillText("MUSUH: "+kills+"/"+targets[level-1],15,48);
+ ctx.fillText("TEMBAKAN: "+hitCount+"/5",15,70);
+ ctx.fillText(flying?"MOD KAPAL TERBANG":"MOD KERETA",15,92);
+}
+
+/* KEMAS KINI */
+
+function update(dt){
+ if(!active||paused)return;
+
+ gameTime+=dt;
+ const m=getMovement();
+
+ player.x+=m.x*PLAYER_SPEED*dt;
+ player.y+=m.y*PLAYER_SPEED*dt;
+ player.x=Math.max(0,Math.min(790,player.x));
+ player.y=Math.max(0,Math.min(425,player.y));
+
+ if(shootHeld)shoot();
+
+ const diff=stages[level-1];
+
+ enemies.forEach(e=>{
+  const info=enemyTypes[e.type];
+  e.x-=diff.speed*info.speed*e.speedFactor*dt;
+  e.y=e.baseY+Math.sin(gameTime*2+e.phase)*20;
+
+  e.shotTimer-=dt;
+  if(e.shotTimer<=0){
+   enemyFire(e);
+   e.shotTimer=Math.max(.55,1.8/level)+(Math.random()*.6);
+  }
+ });
+
+ bullets.forEach(b=>{
+  b.x+=650*dt;
+  b.y+=(b.vy||0)*dt;
+ });
+
+ bullets.forEach(b=>{
+  enemies.forEach(e=>{
+   if(!b.used&&!e.dead&&collision(b,{x:e.x+40,y:e.y+35},42)){
+    b.used=true;
+    e.hp-=b.damage;
+    if(e.hp<=0)killEnemy(e);
+   }
+  });
+ });
+
+ bullets=bullets.filter(b=>b.x<960&&!b.used);
+ enemies=enemies.filter(e=>!e.dead&&e.x>-120);
+
+ if(boss){
+  boss.y=150+Math.sin(gameTime*2)*35;
+  boss.shotTimer-=dt;
+  if(boss.shotTimer<=0){
+   const dx=player.x+40-boss.x;
+   const dy=player.y+30-boss.y;
+   const len=Math.hypot(dx,dy)||1;
+   for(let i=-1;i<=1;i++){
+    enemyShots.push({
+     x:boss.x+20,y:boss.y+60,
+     vx:dx/len*310+i*45,
+     vy:dy/len*310,
+     damage:1,type:0
+    });
+   }
+   boss.shotTimer=.8;
+  }
+
+  bullets.forEach(b=>{
+   if(!b.used&&collision(b,{x:boss.x+65,y:boss.y+60},90)){
+    b.used=true;
+    boss.hp-=b.damage;
+    if(boss.hp<=0)winGame();
+   }
+  });
+ }
+
+ enemyShots.forEach(b=>{
+  b.x+=b.vx*dt;
+  b.y+=b.vy*dt;
+
+  if(!b.used&&collision(b,{x:player.x+45,y:player.y+30},35)){
+   b.used=true;
+   damage();
+  }
+ });
+
+ enemyShots=enemyShots.filter(b=>
+  b.x>-50&&b.x<1000&&b.y>-50&&b.y<550&&!b.used
+ );
+
+ enemies.forEach(e=>{
+  if(!e.dead&&collision(
+   {x:player.x+50,y:player.y+30},
+   {x:e.x+40,y:e.y+35},48
+  )){
+   damage();
+   e.x+=70;
+  }
+ });
+
+ items.forEach(t=>{t.x-=110*dt});
+
+ items=items.filter(t=>{
+  if(collision(t,{x:player.x+45,y:player.y+30},43)){
+   if(t.type===0)changeBullet(1);
+   if(t.type===1)changeBullet(2);
+   if(t.type===2)changeBullet(3);
+
+   if(t.type===3){
+    hp=Math.min(MAX_HP,hp+1);
+    message("❤️ NYAWA BERTAMBAH!");
+   }
+   if(t.type===4){
+    bombCount=Math.min(8,bombCount+1);
+    message("💣 BOM BERTAMBAH!");
+   }
+   if(t.type===5)changeBullet(3);
+   if(t.type===6){
+    score+=300;
+    gems+=3;
+    message("🌈 PERMATA BONUS!");
+   }
+
+   gems++;score+=50;
+   soundSuccess();
+   for(let i=0;i<12;i++)burst(t.x,t.y);
+   updateHUD();
+   return false;
+  }
+  return t.x>-50;
+ });
+
+ particles.forEach(p=>{
+  p.x+=p.vx;p.y+=p.vy;p.life-=60*dt;
+ });
+ particles=particles.filter(p=>p.life>0);
+
+ if(kills>=targets[level-1]&&!paused&&!boss&&!bossSpawned){
+  advanceStage();
+ }
+ updateHUD();
+}
+
+/* GAME LOOP */
+
+function loop(now){
+ let dt=Math.min((now-lastTime)/1000||0,.04);
+ lastTime=now;
+
+ if(active&&!paused&&!bossSpawned){
+  const diff=stages[level-1];
+  if(now-lastSpawn>diff.interval){
+   spawnEnemy();lastSpawn=now;
+  }
+  if(now-lastItem>4500){
+   spawnItem();lastItem=now;
+  }
+ }
+
+ update(dt);
+ draw();
+ requestAnimationFrame(loop);
+}
+
+document.getElementById("startButton").addEventListener("click",startGame);
+updateHUD();
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>
